@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy1
+  labels:
+    app: web-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels: 
+        app: web-app
+    spec:
+      
+      containers:
+      - name: web-app
+        image: yasirdocker/web-app
+        
+
+---
+# Service section: Exposes the deployment to external traffic using LoadBalancer
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app
+spec:
+  selector:
+    app: web-app
+  ports:
+    - protocol: TCP
+      port: 90
+      targetPort: 9090
+  type: LoadBalancer
