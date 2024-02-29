@@ -1,39 +1,78 @@
 pipeline {
-    agent any
+    agent any 
     
-    stages {
-        stage('Checkout') {
+    environment {     
+    DOCKERHUB_CREDENTIALS= credentials('dockerhubcredentials')     
+    }   
+    stages{
+        stage("Clone Code"){
             steps {
-                // Checkout the repository from GitHub
-                git 'https://github.com/git-yasir/jenkins.git'
+                echo "Cloning the code"
+                git url:"https://github.com/git-yasir/jenkins.git", branch: "main"
+                echo "**************************************************************************************************************"
             }
         }
-        
-        stage('Build Docker Image') {
+        stage("Build"){
             steps {
-                // Build Docker image from Dockerfile
-                script {
-                    docker.build("yasirdocker/web-app:${env.BUILD_NUMBER}")
-                }
+                echo "Building the image"
+                sh "docker build -t web-app ."
+                echo "**************************************************************************************************************"
             }
         }
-        
-        stage('Push to DockerHub') {
+
+        stage('Login to Docker Hub') {         
+            steps{                            
+            sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'                 
+            echo 'Login Completed'                
+            }           
+        }               
+
+
+        stage("Push to Docker Hub"){
             steps {
-                // Push the Docker image to DockerHub
+                echo "Pushing the image to docker hub"
+                sh "docker tag web-app yasirdocker/web-app:latest"
+                sh "docker push yasirdocker/web-app:latest"
+                echo "**************************************************************************************************************"
+            }
+        }
+
+        stage("Delete Existing Deployment") {
+            steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub_credentials') {
-                        docker.image("yasirdocker/web-app:${env.BUILD_NUMBER}").push()
+                    def deploymentExists = sh(script: "sudo -u ubuntu kubectl get deployment deploy1", returnStatus: true) == 0
+                    def serviceExists = sh(script: "sudo -u ubuntu kubectl get svc web-app", returnStatus: true) == 0
+                    
+                    if (deploymentExists) {
+                        echo "Deleting the Existing Deployment"
+                        sh "sudo -u ubuntu kubectl delete deployment deploy1"
+                    } else {
+                        echo "No existing deployment found. Skipping deletion."
+                    }
+
+                    if (serviceExists) {
+                        echo "Deleting the Existing Service"
+                        sh "sudo -u ubuntu kubectl delete svc web-app"
+                    } else {
+                        echo "No existing service found. Skipping deletion."
                     }
                 }
+                echo "**************************************************************************************************************"   
             }
         }
-        
-        stage('Deploy to Kubernetes') {
+
+
+
+        stage("Deploy"){
             steps {
-                // Apply Kubernetes deployment
-                sh 'kubectl apply -f deployment.yaml'
+                echo "Deploying the container"
+                sh "sudo -u ubuntu kubectl get pods"
+                sh "sudo -u ubuntu kubectl create -f deployment.yaml"
+                echo "**************************************************************************************************************"
+                
             }
         }
     }
 }
+
+
