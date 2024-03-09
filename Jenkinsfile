@@ -2,7 +2,7 @@ pipeline {
     agent any 
     
     environment {     
-    DOCKERHUB_CREDENTIALS= credentials('dockerhubcredentials')     
+    DOCKERHUB_CREDENTIALS= credentials('DockerHubCredentials')     
     }   
     stages{
         stage("Clone Code"){
